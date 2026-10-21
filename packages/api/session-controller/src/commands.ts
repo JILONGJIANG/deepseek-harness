@@ -355,7 +355,13 @@ export class SessionCommandController {
         if (error instanceof AttachmentError) {
           throw new RemoteError('session/attachment-invalid', error.message, { reason: error.code })
         }
-        throw new RemoteError('session/agent-busy', 'prompt rejected', { reason: String(error) })
+        // The delivery verbs throw synchronously when the Agent can no longer
+        // accept work (a disposed loop). The code stays `session/agent-busy` —
+        // that is the documented catch for an unclassified Session-domain
+        // failure — but the message carries the underlying error so the
+        // composer toast shows the real cause instead of a bare "prompt
+        // rejected" that reads as a busy Agent.
+        throw new RemoteError('session/agent-busy', `prompt rejected: ${String(error)}`, { reason: String(error) })
       }
       return { accepted: true }
     }
