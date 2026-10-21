@@ -350,6 +350,49 @@ describe('ApiSession creation', () => {
     })
   })
 
+  it('releases the image admission chain when a predecessor never settles', async () => {
+    vi.useFakeTimers()
+    try {
+      const { agents } = await harness()
+      const agent = {} as Agent
+      const order: string[] = []
+      const stuck = agents.serializeImageAdmission(agent, () => new Promise<string>(() => {}))
+      const next = agents.serializeImageAdmission(agent, async () => {
+        order.push('next')
+        return 'admitted'
+      })
+
+      await vi.advanceTimersByTimeAsync(ApiSessionAgentController.imageAdmissionWatchdogMs - 1)
+      expect(order).toEqual([])
+      await vi.advanceTimersByTimeAsync(1)
+      await expect(next).resolves.toBe('admitted')
+      expect(order).toEqual(['next'])
+      // The stuck admission stays pending; only the chain moved on.
+      let settled = false
+      void stuck.then(() => { settled = true })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(settled).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps image admissions strictly ordered while each one settles', async () => {
+    const { agents } = await harness()
+    const agent = {} as Agent
+    let releaseFirst: (value: string) => void = () => {}
+    const first = agents.serializeImageAdmission(agent, () => new Promise<string>((resolve) => { releaseFirst = resolve }))
+    const second = agents.serializeImageAdmission(agent, async () => 'second')
+
+    let secondSettled = false
+    void second.then(() => { secondSettled = true })
+    for (let i = 0; i < 5; i++) await Promise.resolve()
+    expect(secondSettled).toBe(false)
+    releaseFirst('first')
+    await expect(first).resolves.toBe('first')
+    await expect(second).resolves.toBe('second')
+  })
+
   it('surfaces directory creation failure', async () => {
     const { agents } = await harness()
     const parent = mkdtempSync(join(tmpdir(), 'dsh-session-controller-file-'))

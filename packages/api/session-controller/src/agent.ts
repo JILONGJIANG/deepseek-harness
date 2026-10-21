@@ -173,6 +173,14 @@ export class ApiSessionAgentController {
   private readonly selections = new WeakMap<Agent, InstalledSelection>()
   private readonly imageAdmissionChains = new WeakMap<Agent, Promise<void>>()
 
+  /**
+   * Bound on how long one image admission may hold the Agent's chain before
+   * later admissions stop waiting on it. A decode or model lookup that never
+   * settles would otherwise queue every later image send behind it with no
+   * error. Fixed safety bound, not a deployment choice.
+   */
+  static readonly imageAdmissionWatchdogMs = 60_000
+
   /** @param ctx - Host context carrying Agent, model, persistence, and Typert services. */
   constructor(private readonly ctx: Context) {
     ctx.typert.lookups.configure('agent', async (sessionId: SessionId) => {
@@ -374,7 +382,16 @@ export class ApiSessionAgentController {
    * @returns the operation result or rejection.
    */
   serializeImageAdmission<Value>(agent: Agent, operation: () => Promise<Value>): Promise<Value> {
-    const result = (this.imageAdmissionChains.get(agent) ?? Promise.resolve()).then(operation)
+    const predecessor = this.imageAdmissionChains.get(agent) ?? Promise.resolve()
+    // A predecessor that never settles must not hold later admissions. After
+    // the watchdog bound the chain continues without it; the stuck admission
+    // keeps running and delivers late if it ever finishes.
+    const released = new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, ApiSessionAgentController.imageAdmissionWatchdogMs)
+      timer.unref?.()
+      void predecessor.then(() => { clearTimeout(timer); resolve() }, () => { clearTimeout(timer); resolve() })
+    })
+    const result = released.then(operation)
     this.imageAdmissionChains.set(agent, result.then(() => undefined, () => undefined))
     return result
   }
