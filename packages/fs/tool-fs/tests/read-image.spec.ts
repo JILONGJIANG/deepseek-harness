@@ -423,8 +423,8 @@ describe('extension-less paths', () => {
     expect(text(result)).toContain('image/png images are not accepted by this deployment')
   })
 
-  it('names a signature/decoded-format disagreement on an extension-less path', async () => {
-    /** Store whose admission reports a media-type mismatch; the tool cannot blame an extension. */
+  it('reports a provider that still refuses a declared/decoded media-type disagreement', async () => {
+    /** Store whose admission reports a media-type mismatch of its own. */
     class MismatchStore extends AttachmentStore {
       readonly imageLimits: ImageAttachmentLimits = Object.freeze({
         maxImageBytes: 1024,
@@ -452,7 +452,7 @@ describe('extension-less paths', () => {
     await ctx.plugin(MismatchStore)
     const result = await readImage(ctx, { file_path: 'sniffed' }, agentOn('vision-model'))
     expect(result.isError).toBe(true)
-    expect(text(result)).toContain('the file signature claims image/png, but the bytes decode as a different image format')
+    expect(text(result)).toContain('its declared type does not match its bytes')
   })
 })
 
@@ -567,13 +567,15 @@ describe('argument and service preconditions', () => {
 })
 
 describe('image admission failures', () => {
-  it('explains how to repair a declared/actual media-type mismatch', async () => {
+  it('reads a file whose extension disagrees with its bytes under the decoded type', async () => {
     await writeFile(join(dir, 'wrong.jpg'), PNG_1X1)
     const ctx = await setup()
     const result = await readImage(ctx, { file_path: 'wrong.jpg' }, agentOn('vision-model'))
-    expect(result.isError).toBe(true)
-    expect(text(result)).toContain('the .jpg extension declares image/jpeg')
-    expect(text(result)).toContain('rename the file to match its actual format if it is PNG/JPEG/WebP/GIF, or convert it to one of those formats')
+    expect(result.isError).toBe(false)
+    expect(result.content).toContainEqual(expect.objectContaining({
+      type: 'image',
+      attachment: expect.objectContaining({ mediaType: 'image/png' }),
+    }))
   })
 
   it('caps an extension-less read at maxImageBytes before format detection', async () => {

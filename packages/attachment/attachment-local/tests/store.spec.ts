@@ -208,7 +208,7 @@ describe('local attachment store', () => {
     await expect(readImageFile(storageRoot, ref, controller.signal)).rejects.toBe(cancellation)
   })
 
-  it('rejects malformed bytes, mismatched declarations, byte limits, and decoded-pixel limits', async () => {
+  it('rejects malformed bytes, byte limits, and decoded-pixel limits, and admits a misdeclared type by its bytes', async () => {
     const storageRoot = await root()
     await expect(saveImageFile(storageRoot, {
       data: new Uint8Array(0), mediaType: 'image/png',
@@ -216,9 +216,13 @@ describe('local attachment store', () => {
     await expect(saveImageFile(storageRoot, {
       data: Uint8Array.of(1, 2, 3), mediaType: 'image/png',
     }, LIMITS, POLICY)).rejects.toMatchObject({ code: 'INVALID_IMAGE' })
-    await expect(saveImageFile(storageRoot, {
+    // PNG bytes declared as JPEG — the common messenger/screenshot mismatch.
+    // Admission follows the decoded bytes; the durable reference records the
+    // normalized type, not the declaration.
+    const misdeclared = await saveImageFile(storageRoot, {
       data: PNG, mediaType: 'image/jpeg',
-    }, LIMITS, POLICY)).rejects.toMatchObject({ code: 'IMAGE_TYPE_MISMATCH' })
+    }, LIMITS, POLICY)
+    expect(misdeclared.mediaType).toBe('image/png')
     await expect(saveImageFile(storageRoot, {
       data: PNG, mediaType: 'image/png',
     }, { ...LIMITS, maxImageBytes: 1 }, POLICY)).rejects.toMatchObject({ code: 'IMAGE_TOO_LARGE' })

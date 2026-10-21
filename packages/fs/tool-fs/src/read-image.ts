@@ -307,15 +307,14 @@ export function applyReadImageTool(ctx: Context): void {
             { cause: error },
           )
         }
+        // A declared media type that disagrees with the decoded bytes is no
+        // longer a refusal: admission follows the bytes and stores the image
+        // under the type they decode as, so a renamed or messenger-re-wrapped
+        // file is readable. IMAGE_TYPE_MISMATCH is retained only for an
+        // attachment provider that still raises it.
         if (error.code !== 'IMAGE_TYPE_MISMATCH') throw error
-        if (declared === undefined) {
-          throw new Error(
-            `cannot read "${target.displayPath}": the file signature claims ${mediaType}, but the bytes decode as a different image format; the file may be corrupt`,
-            { cause: error },
-          )
-        }
         throw new Error(
-          `cannot read "${target.displayPath}": the ${extension} extension declares ${mediaType}, but the bytes use a different image format; rename the file to match its actual format if it is PNG/JPEG/WebP/GIF, or convert it to one of those formats`,
+          `cannot read "${target.displayPath}": the image was refused because its declared type does not match its bytes`,
           { cause: error },
         )
       }
