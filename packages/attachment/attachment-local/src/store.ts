@@ -53,15 +53,22 @@ export function normalizedImagePath(root: string, ref: ImageAttachmentRef): stri
   return join(root, 'objects', sha256.slice(0, 2), sha256)
 }
 
+/**
+ * Admission trusts the decoded bytes, not the caller's declared type: a file
+ * whose container differs from its declared media type (a JPEG saved with a
+ * `.png` name, a screenshot re-wrapped by a messenger) is a real image and is
+ * admitted under the type its bytes decode as. Detection failure and the
+ * decoded-pixel limits still refuse the bytes.
+ * @param data - submitted encoded bytes.
+ * @param limits - source admission policy supplying the decoded-pixel limits.
+ * @returns decoded facts the normalization step consumes.
+ */
 async function inspectMetadata(
   data: Uint8Array,
-  declaredMediaType: ImageAttachmentRef['mediaType'],
   limits: ImageAttachmentLimits,
 ): Promise<DetectedImage> {
   if (data.byteLength === 0) throw new AttachmentError('Image is empty.', 'INVALID_IMAGE')
-  const detected = await detectImage(data, { maxPixels: limits.maxImagePixels, maxDimension: limits.maxImageDimension })
-  if (detected.mediaType !== declaredMediaType) throw new AttachmentError('Declared image type does not match its bytes.', 'IMAGE_TYPE_MISMATCH')
-  return detected
+  return detectImage(data, { maxPixels: limits.maxImagePixels, maxDimension: limits.maxImageDimension })
 }
 
 /**
@@ -104,7 +111,7 @@ export async function prepareImageFile(
   if (input.data.byteLength > limits.maxImageBytes) {
     throw new AttachmentError('Image exceeds the configured byte limit.', 'IMAGE_TOO_LARGE')
   }
-  const detected = await inspectMetadata(input.data, input.mediaType, limits)
+  const detected = await inspectMetadata(input.data, limits)
   const normalized = await normalizeImage(input.data, detected, policy)
   const sha256 = digest(normalized.data)
   const name = displayName(input.name)
