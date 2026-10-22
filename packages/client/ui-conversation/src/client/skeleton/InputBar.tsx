@@ -43,6 +43,11 @@ import css from './InputBar.module.css'
 
 export type InputBarProps = ComposerBarProps
 
+function rejectionDetail(details: { readonly reason?: unknown }): string {
+  const reason = typeof details.reason === 'string' ? details.reason.trim() : ''
+  return reason === '' ? '' : `: ${reason}`
+}
+
 export const InputBar = memo(function InputBar({
   useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments,
   retryFileUpload,
@@ -115,7 +120,7 @@ export const InputBar = memo(function InputBar({
     }
     showToast(error.code === 'session/attachment-invalid' || error.code === 'subagent/attachment-invalid'
       ? attachmentErrorText(t, error.details.reason, imageLimits)
-      : `${error.message} (${error.code})`)
+      : `${error.message} (${error.code}${rejectionDetail(error.details)})`)
   }, [promptError, showToast, t, imageLimits])
   useEffect(() => {
     if (notice?.level === 'error') showToast(notice.text)
