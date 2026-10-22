@@ -592,8 +592,23 @@ function imageMediaType(value: string): ImageMediaType {
  * @param value - the browser's declared MIME type.
  * @returns whether the file is an accepted raster image.
  */
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|webp|gif)$/i
+
 export function isImageMediaType(value: string): boolean {
   return value === 'image/png' || value === 'image/jpeg' || value === 'image/webp' || value === 'image/gif'
+}
+
+/**
+ * Whether a picked file should enter the image draft path.
+ * A browser that cannot name the type (an empty MIME, common for files
+ * dragged in from another app) falls back to the filename extension.
+ * HEIC and HEIF stay excluded: the Host decodes only PNG, JPEG, WebP and GIF.
+ * @param file - the browser file being admitted.
+ * @returns whether the file is treated as an accepted raster image.
+ */
+export function isImageFile(file: File): boolean {
+  if (isImageMediaType(file.type)) return true
+  return file.type === '' && IMAGE_EXTENSIONS.test(file.name)
 }
 
 function revokePreview(url: string): void {

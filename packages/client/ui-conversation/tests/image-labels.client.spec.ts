@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import { attachmentErrorText, imageSizeText } from '../src/client/image-labels.ts'
+import { isImageFile } from '../src/client/service.ts'
 import { en, zh } from '../src/client/locales.ts'
 
 const t = makeTranslate(zh, commonZh)
@@ -40,5 +41,22 @@ describe('attachment rejection copy', () => {
     expect(attachmentErrorText(t, 'IMAGE_TOO_LARGE')).toBe('图片发送失败（IMAGE_TOO_LARGE），请重新添加图片后再试')
     expect(attachmentErrorText(t, 'IMAGES_TOO_LARGE')).toBe('图片发送失败（IMAGES_TOO_LARGE），请重新添加图片后再试')
     expect(attachmentErrorText(t, 'IMAGE_DIMENSION_TOO_LARGE')).toBe('图片发送失败（IMAGE_DIMENSION_TOO_LARGE），请重新添加图片后再试')
+  })
+})
+
+describe('empty MIME image intake', () => {
+  const file = (name: string, type: string) => ({ name, type }) as File
+
+  it('admits a nameless PNG by its extension', () => {
+    expect(isImageFile(file('shot.png', ''))).toBe(true)
+    expect(isImageFile(file('shot.JPEG', ''))).toBe(true)
+    expect(isImageFile(file('shot.webp', ''))).toBe(true)
+    expect(isImageFile(file('shot.gif', ''))).toBe(true)
+  })
+
+  it('keeps HEIC and a declared non-image type out of the image path', () => {
+    expect(isImageFile(file('iphone.heic', ''))).toBe(false)
+    expect(isImageFile(file('notes.txt', ''))).toBe(false)
+    expect(isImageFile(file('shot.png', 'application/octet-stream'))).toBe(false)
   })
 })

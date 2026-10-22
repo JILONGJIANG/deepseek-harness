@@ -36,7 +36,7 @@ import {
 } from '../input/editor/view-binding.ts'
 import { resolveSubmitMode } from '../input/submission-policy.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
-import { isImageMediaType } from '../service.ts'
+import { isImageFile } from '../service.ts'
 import { ContextMeter } from './ContextMeter.tsx'
 import { observeControlRow } from './control-row-layout.ts'
 import css from './InputBar.module.css'
@@ -214,7 +214,7 @@ export const InputBar = memo(function InputBar({
     const rejected = ((): string | null => {
       // Child prompts support images, but not generic file receipts or the
       // Desktop path-reference fallback. Refuse mixed batches before intake.
-      if (continuable && files.some(file => directories?.has(file) || !isImageMediaType(file.type))) {
+      if (continuable && files.some(file => directories?.has(file) || !isImageFile(file))) {
         return t('image.unsupportedType')
       }
       if (imageLimits !== undefined) {
