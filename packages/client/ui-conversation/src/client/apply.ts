@@ -27,7 +27,7 @@ import type { ReferenceInsert } from './contract/draft-editor.ts'
 import { createConversationStore, readConversationViewPreference } from './stores.ts'
 import { formatFileMention } from '@deepseek-ai/dsh-file-reference/grammar'
 import { relativizeToCwd, workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
-import { ConversationController, UnsupportedImageMediaTypeError, isImageMediaType } from './service.ts'
+import { ConversationController, UnsupportedImageMediaTypeError, isImageFile } from './service.ts'
 import type { IConversation } from './service.ts'
 import { ComposerBlockRegistry } from './input/blocks.ts'
 import type { ComposerBlock } from './contract/composer-blocks.ts'
@@ -498,7 +498,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
             if (bridge === undefined && directory) return t('attachment.directoryDesktopOnly')
             const path = bridge?.pathFor(file) ?? ''
             if (directory && path === '') return t('attachment.pathUnavailable')
-            if (path === '' || (!directory && isImageMediaType(file.type))) {
+            if (path === '' || (!directory && isImageFile(file))) {
               uploads.push(file)
               continue
             }
