@@ -43,8 +43,8 @@ import css from './InputBar.module.css'
 
 export type InputBarProps = ComposerBarProps
 
-function rejectionDetail(details: { readonly reason?: unknown }): string {
-  const reason = typeof details.reason === 'string' ? details.reason.trim() : ''
+function rejectionDetail(details: object): string {
+  const reason = 'reason' in details && typeof details.reason === 'string' ? details.reason.trim() : ''
   return reason === '' ? '' : `: ${reason}`
 }
 
