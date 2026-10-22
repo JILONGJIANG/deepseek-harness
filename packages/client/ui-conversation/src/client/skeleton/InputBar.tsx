@@ -115,7 +115,7 @@ export const InputBar = memo(function InputBar({
     if (promptError === null) return
     const { error } = promptError
     if (error.code === 'session/writer-held') {
-      showToast(t('error.sessionInUse'))
+      showToast(`${t('error.sessionInUse')}${rejectionDetail(error.details)}`)
       return
     }
     showToast(error.code === 'session/attachment-invalid' || error.code === 'subagent/attachment-invalid'
